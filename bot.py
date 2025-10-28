@@ -11,16 +11,15 @@ YOUTUBE_API_KEY = "AIzaSyBOlCfpH5hRB7ww6iglaFweG--O0P42gVE"
 youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 
 # === ФУНКЦІЯ ПОШУКУ НА YOUTUBE ===
-def search_youtube(query):
+def search_youtube(query, min_views=10_000_000):
     random_suffix = random.choice(["song", "track", "official music video", "hit", "clip"])
     search_query = f"{query} {random_suffix} -playlist -mix"
 
-    # 1️⃣ шукаємо до 50 відео
     request = youtube.search().list(
         part="snippet",
         q=search_query,
         type="video",
-        videoDuration="short",  # короткі треки (до ~4 хв)
+        videoDuration="short",
         maxResults=50
     )
     response = request.execute()
@@ -28,7 +27,6 @@ def search_youtube(query):
     if not videos:
         return "Нічого не знайдено 😞"
 
-    # 2️⃣ отримуємо статистику
     video_ids = [v["id"]["videoId"] for v in videos]
     stats_request = youtube.videos().list(
         part="statistics,snippet,contentDetails",
@@ -36,7 +34,6 @@ def search_youtube(query):
     )
     stats_response = stats_request.execute()
 
-    # 3️⃣ фільтрація по переглядах >10 млн
     popular_videos = []
     for item in stats_response.get("items", []):
         stats = item.get("statistics", {})
@@ -45,25 +42,24 @@ def search_youtube(query):
         video_id = item["id"]
         url = f"https://www.youtube.com/watch?v={video_id}"
 
-        if view_count > 10_000_000:
+        if view_count > min_views:
             popular_videos.append(f"{title}\n🎧 {url}")
 
-    # 4️⃣ fallback якщо немає таких відео
     if not popular_videos:
         item = random.choice(stats_response.get("items", []))
         title = item["snippet"]["title"]
         url = f"https://www.youtube.com/watch?v={item['id']}"
         return f"{title}\n🎧 {url}"
 
-    # 5️⃣ випадкова популярна пісня
     return random.choice(popular_videos)
 
 # === КОМАНДА /start ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         ["🎲 Випадкова пісня", "🎧 Англійські пісні"],
-        ["🇺🇦 Українські пісні", "🎉 Веселі українські"],
-        ["🎤 Макс Корж", "💿 Фонк"]
+        ["🌍 Англійські хіти", "🇺🇦 Українські пісні"],
+        ["🎉 Веселі українські", "🎤 Макс Корж"],
+        ["💿 Фонк"]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text("Привіт! Обери, що послухати 👇", reply_markup=reply_markup)
@@ -79,6 +75,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif user_input == "🎧 Англійські пісні":
         song = search_youtube(random.choice(["English pop", "rock hits", "rap song", "R&B hit"]))
         await update.message.reply_text(f"🇺🇸 Англійська пісня:\n{song}")
+
+    elif user_input == "🌍 Англійські хіти":
+        song = search_youtube(random.choice([
+            "English top hit", "global hit", "trending song", "viral pop music", "2024 hit song"
+        ]), min_views=100_000_000)
+        await update.message.reply_text(f"🌍 Англійський хіт:\n{song}")
 
     elif user_input == "🇺🇦 Українські пісні":
         song = search_youtube(random.choice(["українська пісня", "українська музика", "український хіт"]))
