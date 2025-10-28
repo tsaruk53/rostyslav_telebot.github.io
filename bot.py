@@ -1,73 +1,69 @@
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-from spotipy import Spotify
-from spotipy.oauth2 import SpotifyClientCredentials
+from googleapiclient.discovery import build
 import random
 
-# Spotify API налаштування
-SPOTIFY_CLIENT_ID = "9a4f559d233d4529a98777969954fc54"
-SPOTIFY_CLIENT_SECRET = "a6e14fe3e6104e269041e42644a0fa8c"
-
-spotify = Spotify(auth_manager=SpotifyClientCredentials(
-    client_id=SPOTIFY_CLIENT_ID,
-    client_secret=SPOTIFY_CLIENT_SECRET
-))
-
-# Функція для випадкової пісні
-def get_random_track():
-    genres = ["pop", "rock", "hip-hop", "jazz", "classical", "indie", "electronic", "country", "metal", "latin"]
-    random_genre = random.choice(genres)
-
-    results = spotify.search(q=f"genre:{random_genre}", type="track", limit=50)
-    if results['tracks']['items']:
-        track = random.choice(results['tracks']['items'])
-        return f"{track['name']} - {track['artists'][0]['name']}\nСлухати: {track['external_urls']['spotify']}"
-    else:
-        return "Не вдалося знайти випадкову пісню 😞"
-
-# Telegram-бот
+# === ТВОЇ КЛЮЧІ ===
 TOKEN = "7922312181:AAGMFWZXnx6gqoDYjwprogWKknvYfDnoYQ8"
+YOUTUBE_API_KEY = "AIzaSyBOlCfpH5hRB7ww6iglaFweG--O0P42gVE"
 
-# Стартова команда
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        ["🔍 Пошук музики", "🎲 Випадкова пісня"]
-    ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text(
-        "Привіт! Яку пісню хочеш послухати сьогодні:", reply_markup=reply_markup
+# === Ініціалізація YouTube API ===
+youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+
+# === ЖАНРИ ДЛЯ ВИПАДКОВИХ ПІСЕНЬ ===
+genres = ["pop", "rock", "hip-hop", "jazz", "classical", "indie", "electronic", "country", "metal", "latin"]
+
+# === ФУНКЦІЯ ПОШУКУ НА YOUTUBE ===
+def search_youtube(query, limit=3):
+    request = youtube.search().list(
+        part="snippet",
+        q=query,
+        type="video",
+        maxResults=limit
     )
+    response = request.execute()
 
-# Обробка повідомлень
+    if not response["items"]:
+        return "Нічого не знайдено 😞"
+
+    result_text = ""
+    for idx, item in enumerate(response["items"], start=1):
+        title = item["snippet"]["title"]
+        video_id = item["id"]["videoId"]
+        url = f"https://www.youtube.com/watch?v={video_id}"
+        result_text += f"{idx}. {title}\n🎧 {url}\n\n"
+
+    return result_text.strip()
+
+# === ФУНКЦІЯ ДЛЯ ВИПАДКОВОЇ ПІСНІ ===
+def get_random_track():
+    random_genre = random.choice(genres)
+    return search_youtube(random_genre, limit=1)
+
+# === КОМАНДА /start ===
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [["🔍 Пошук музики", "🎲 Випадкова пісня"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text("Привіт! Обери, що зробити 👇", reply_markup=reply_markup)
+
+# === ОБРОБКА ПОВІДОМЛЕНЬ ===
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text
 
     if user_input == "🔍 Пошук музики":
-        await update.message.reply_text("Напишіть назву пісні або виконавця для пошуку.")
+        await update.message.reply_text("Введи назву пісні або виконавця 🎵")
     elif user_input == "🎲 Випадкова пісня":
-        random_song = get_random_track()
-        await update.message.reply_text(f"🎲 Випадкова пісня:\n{random_song}")
+        song = get_random_track()
+        await update.message.reply_text(f"🎲 Випадкова пісня:\n{song}")
     else:
-        # Пошук за введеним текстом
-        results = spotify.search(q=user_input, type="track", limit=3)
-        if results['tracks']['items']:
-            search_results = "🔍 Знайдено:\n"
-            for idx, track in enumerate(results['tracks']['items']):
-                search_results += (
-                    f"{idx + 1}. {track['name']} - {track['artists'][0]['name']}\n"
-                    f"Слухати: {track['external_urls']['spotify']}\n\n"
-                )
-            await update.message.reply_text(search_results)
-        else:
-            await update.message.reply_text("Нічого не знайдено 😞")
+        search_results = search_youtube(user_input, limit=3)
+        await update.message.reply_text(f"🔍 Знайдено:\n{search_results}")
 
-# Основний код
+# === ОСНОВНИЙ КОД ===
 if __name__ == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
-
-    # Обробники
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("Бот запущено!")
+    print("Бот запущено! ✅")
     app.run_polling()
