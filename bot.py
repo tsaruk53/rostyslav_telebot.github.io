@@ -14,27 +14,49 @@ youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 genres = ["pop", "rock", "hip-hop", "jazz", "classical", "indie", "electronic", "country", "metal", "latin"]
 
 # === ПОШУК НА YOUTUBE ===
-def search_youtube(query, limit=3):
+def search_youtube(query):
+    # створюємо пошук по ключових словах
+    random_suffix = random.choice(["song", "track", "music", "official video", "hit", "clip"])
+    search_query = f"{query} {random_suffix} -playlist -mix"
+
+    # отримуємо список відео
     request = youtube.search().list(
         part="snippet",
-        q=f"{query} official music video -mix -playlist",
+        q=search_query,
         type="video",
-        videoDuration="short",  # тільки короткі (до 4 хв)
-        maxResults=limit
+        videoDuration="short",
+        maxResults=50
     )
     response = request.execute()
+    videos = response.get("items", [])
 
-    if not response["items"]:
+    if not videos:
         return "Нічого не знайдено 😞"
 
-    result_text = ""
-    for idx, item in enumerate(response["items"], start=1):
-        title = item["snippet"]["title"]
-        video_id = item["id"]["videoId"]
-        url = f"https://www.youtube.com/watch?v={video_id}"
-        result_text += f"{idx}. {title}\n🎧 {url}\n\n"
+    # далі отримаємо статистику переглядів для кожного відео
+    video_ids = [v["id"]["videoId"] for v in videos]
+    stats_request = youtube.videos().list(
+        part="statistics,snippet",
+        id=",".join(video_ids)
+    )
+    stats_response = stats_request.execute()
 
-    return result_text.strip()
+    # відфільтруємо тільки відео з >100 млн переглядів
+    popular_videos = []
+    for item in stats_response.get("items", []):
+        stats = item.get("statistics", {})
+        if int(stats.get("viewCount", 0)) > 100_000_000:
+            title = item["snippet"]["title"]
+            video_id = item["id"]
+            url = f"https://www.youtube.com/watch?v={video_id}"
+            popular_videos.append(f"{title}\n🎧 {url}")
+
+    if not popular_videos:
+        return "Не знайшов пісень з 100+ млн переглядів 😞"
+
+    # повертаємо випадкову популярну пісню
+    return random.choice(popular_videos)
+
 
 # === КАТЕГОРІЇ ===
 def get_random_track():
