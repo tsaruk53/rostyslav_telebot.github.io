@@ -17,8 +17,9 @@ genres = ["pop", "rock", "hip-hop", "jazz", "classical", "indie", "electronic", 
 def search_youtube(query, limit=3):
     request = youtube.search().list(
         part="snippet",
-        q=query,
+        q=f"{query} official music video -mix -playlist",
         type="video",
+        videoDuration="short",  # тільки короткі (до 4 хв)
         maxResults=limit
     )
     response = request.execute()
@@ -35,24 +36,24 @@ def search_youtube(query, limit=3):
 
     return result_text.strip()
 
-# === ФУНКЦІЇ ДЛЯ РІЗНИХ ВИПАДКОВИХ ПІСЕНЬ ===
+# === КАТЕГОРІЇ ===
 def get_random_track():
     return search_youtube(random.choice(genres), 1)
 
 def get_ukrainian_song():
-    return search_youtube("українська музика", 1)
+    return search_youtube("українська пісня official video", 1)
 
 def get_english_song():
-    return search_youtube("english pop music", 1)
+    return search_youtube("english pop song official video", 1)
 
 def get_funny_song():
-    return search_youtube("веселі українські пісні", 1)
+    return search_youtube("весела українська пісня official video", 1)
 
 def get_fonk_song():
-    return search_youtube("phonk music", 1)
+    return search_youtube("phonk song official video", 1)
 
 def get_makskorzh_song():
-    return search_youtube("Макс Корж", 1)
+    return search_youtube("Макс Корж official video", 1)
 
 # === /start ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
