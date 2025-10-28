@@ -7,13 +7,13 @@ import random
 TOKEN = "7922312181:AAGMFWZXnx6gqoDYjwprogWKknvYfDnoYQ8"
 YOUTUBE_API_KEY = "AIzaSyBOlCfpH5hRB7ww6iglaFweG--O0P42gVE"
 
-# === Ініціалізація YouTube API ===
+# === YouTube API ===
 youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
 
-# === ЖАНРИ ДЛЯ ВИПАДКОВИХ ПІСЕНЬ ===
+# === ЖАНРИ ===
 genres = ["pop", "rock", "hip-hop", "jazz", "classical", "indie", "electronic", "country", "metal", "latin"]
 
-# === ФУНКЦІЯ ПОШУКУ НА YOUTUBE ===
+# === ПОШУК НА YOUTUBE ===
 def search_youtube(query, limit=3):
     request = youtube.search().list(
         part="snippet",
@@ -35,28 +35,55 @@ def search_youtube(query, limit=3):
 
     return result_text.strip()
 
-# === ФУНКЦІЯ ДЛЯ ВИПАДКОВОЇ ПІСНІ ===
+# === ФУНКЦІЇ ДЛЯ РІЗНИХ ВИПАДКОВИХ ПІСЕНЬ ===
 def get_random_track():
-    random_genre = random.choice(genres)
-    return search_youtube(random_genre, limit=1)
+    return search_youtube(random.choice(genres), 1)
 
-# === КОМАНДА /start ===
+def get_ukrainian_song():
+    return search_youtube("українська музика", 1)
+
+def get_english_song():
+    return search_youtube("english pop music", 1)
+
+def get_funny_song():
+    return search_youtube("веселі українські пісні", 1)
+
+def get_fonk_song():
+    return search_youtube("phonk music", 1)
+
+def get_makskorzh_song():
+    return search_youtube("Макс Корж", 1)
+
+# === /start ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [["🔍 Пошук музики", "🎲 Випадкова пісня"]]
+    keyboard = [
+        ["🎲 Випадкова пісня", "🎵 Українська", "🎧 Англійська"],
+        ["😄 Веселі 🇺🇦", "🔥 Фонк", "🎤 Макс Корж"],
+        ["🔍 Пошук музики"]
+    ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text("Привіт! Обери, що зробити 👇", reply_markup=reply_markup)
+    await update.message.reply_text("Привіт! Обери, що послухати 🎶", reply_markup=reply_markup)
 
 # === ОБРОБКА ПОВІДОМЛЕНЬ ===
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_input = update.message.text
+    text = update.message.text
 
-    if user_input == "🔍 Пошук музики":
+    if text == "🔍 Пошук музики":
         await update.message.reply_text("Введи назву пісні або виконавця 🎵")
-    elif user_input == "🎲 Випадкова пісня":
-        song = get_random_track()
-        await update.message.reply_text(f"🎲 Випадкова пісня:\n{song}")
+    elif text == "🎲 Випадкова пісня":
+        await update.message.reply_text(f"🎲 Ось твоя пісня:\n{get_random_track()}")
+    elif text == "🎵 Українська":
+        await update.message.reply_text(f"🇺🇦 Українська пісня:\n{get_ukrainian_song()}")
+    elif text == "🎧 Англійська":
+        await update.message.reply_text(f"🇬🇧 Англійська пісня:\n{get_english_song()}")
+    elif text == "😄 Веселі 🇺🇦":
+        await update.message.reply_text(f"😂 Весела пісня:\n{get_funny_song()}")
+    elif text == "🔥 Фонк":
+        await update.message.reply_text(f"😎 Фонк-трек:\n{get_fonk_song()}")
+    elif text == "🎤 Макс Корж":
+        await update.message.reply_text(f"🎤 Випадкова пісня Макса Коржа:\n{get_makskorzh_song()}")
     else:
-        search_results = search_youtube(user_input, limit=3)
+        search_results = search_youtube(text, 3)
         await update.message.reply_text(f"🔍 Знайдено:\n{search_results}")
 
 # === ОСНОВНИЙ КОД ===
